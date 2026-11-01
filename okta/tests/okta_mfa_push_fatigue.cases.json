@@ -1,0 +1,68 @@
+{
+  "rule_id": "okta-mfa-push-fatigue",
+  "about": "Made-up events in the shape of Okta documents, with example.com users and documentation IP ranges. Nothing here is copied from real logs. They show why the rule should or should not fire.",
+  "cases": [
+    {
+      "name": "five pushes in four minutes, four denied, the fifth approved (fatigue that worked)",
+      "expect": "fire",
+      "why": "5 push events for one user.name inside one 6-minute lookback. The denials and the final approval don't match the query; they are here because this is what a successful MFA-bombing looks like.",
+      "events": [
+        {"@timestamp": "2026-10-27T14:00:00Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T14:01:05Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}},
+        {"@timestamp": "2026-10-27T14:00:20Z", "event": {"dataset": "okta.system", "action": "user.authentication.auth_via_mfa", "outcome": "failure", "ingested": "2026-10-27T14:01:25Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}, "okta": {"outcome": {"reason": "INVALID_CREDENTIALS"}, "debug_context": {"debug_data": {"factor": "OKTA_VERIFY_PUSH"}}}},
+        {"@timestamp": "2026-10-27T14:00:50Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T14:01:55Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}},
+        {"@timestamp": "2026-10-27T14:01:10Z", "event": {"dataset": "okta.system", "action": "user.authentication.auth_via_mfa", "outcome": "failure", "ingested": "2026-10-27T14:02:15Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}, "okta": {"outcome": {"reason": "INVALID_CREDENTIALS"}, "debug_context": {"debug_data": {"factor": "OKTA_VERIFY_PUSH"}}}},
+        {"@timestamp": "2026-10-27T14:01:40Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T14:02:45Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}},
+        {"@timestamp": "2026-10-27T14:02:00Z", "event": {"dataset": "okta.system", "action": "user.authentication.auth_via_mfa", "outcome": "failure", "ingested": "2026-10-27T14:03:05Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}, "okta": {"outcome": {"reason": "INVALID_CREDENTIALS"}, "debug_context": {"debug_data": {"factor": "OKTA_VERIFY_PUSH"}}}},
+        {"@timestamp": "2026-10-27T14:02:30Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T14:03:35Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}},
+        {"@timestamp": "2026-10-27T14:02:50Z", "event": {"dataset": "okta.system", "action": "user.authentication.auth_via_mfa", "outcome": "failure", "ingested": "2026-10-27T14:03:55Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}, "okta": {"outcome": {"reason": "INVALID_CREDENTIALS"}, "debug_context": {"debug_data": {"factor": "OKTA_VERIFY_PUSH"}}}},
+        {"@timestamp": "2026-10-27T14:03:20Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T14:04:25Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}},
+        {"@timestamp": "2026-10-27T14:03:45Z", "event": {"dataset": "okta.system", "action": "user.authentication.auth_via_mfa", "outcome": "success", "ingested": "2026-10-27T14:04:50Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}, "okta": {"debug_context": {"debug_data": {"factor": "OKTA_VERIFY_PUSH"}}}}
+      ]
+    },
+    {
+      "name": "two pushes, then approved (slow phone)",
+      "expect": "no_fire",
+      "why": "2 pushes: a user whose first push timed out. Well below the threshold.",
+      "events": [
+        {"@timestamp": "2026-10-27T15:00:00Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T15:01:05Z"}, "user": {"name": "user-b@example.com"}, "source": {"ip": "198.51.100.20"}},
+        {"@timestamp": "2026-10-27T15:01:10Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T15:02:15Z"}, "user": {"name": "user-b@example.com"}, "source": {"ip": "198.51.100.20"}},
+        {"@timestamp": "2026-10-27T15:01:35Z", "event": {"dataset": "okta.system", "action": "user.authentication.auth_via_mfa", "outcome": "success", "ingested": "2026-10-27T15:02:40Z"}, "user": {"name": "user-b@example.com"}, "source": {"ip": "198.51.100.20"}}
+      ]
+    },
+    {
+      "name": "five pushes to five users in two minutes (busy morning)",
+      "expect": "no_fire",
+      "why": "The count is per user.name, and each user has 1.",
+      "events": [
+        {"@timestamp": "2026-10-27T16:00:00Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T16:01:05Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "198.51.100.31"}},
+        {"@timestamp": "2026-10-27T16:00:30Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T16:01:35Z"}, "user": {"name": "user-b@example.com"}, "source": {"ip": "198.51.100.32"}},
+        {"@timestamp": "2026-10-27T16:01:00Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T16:02:05Z"}, "user": {"name": "user-c@example.com"}, "source": {"ip": "198.51.100.33"}},
+        {"@timestamp": "2026-10-27T16:01:30Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T16:02:35Z"}, "user": {"name": "user-d@example.com"}, "source": {"ip": "198.51.100.34"}},
+        {"@timestamp": "2026-10-27T16:02:00Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T16:03:05Z"}, "user": {"name": "user-e@example.com"}, "source": {"ip": "198.51.100.35"}}
+      ]
+    },
+    {
+      "name": "five pushes to one user over 40 minutes (slow drip)",
+      "expect": "no_fire",
+      "why": "A known gap: 10 minutes between pushes never puts 5 in one 6-minute lookback. A slow-drip attacker gets under this rule; a longer-window rule (or one on denials) would catch it.",
+      "events": [
+        {"@timestamp": "2026-10-27T17:00:00Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T17:01:05Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}},
+        {"@timestamp": "2026-10-27T17:10:00Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T17:11:05Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}},
+        {"@timestamp": "2026-10-27T17:20:00Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T17:21:05Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}},
+        {"@timestamp": "2026-10-27T17:30:00Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T17:31:05Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}},
+        {"@timestamp": "2026-10-27T17:40:00Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T17:41:05Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}}
+      ]
+    },
+    {
+      "name": "four pushes in two minutes for one user",
+      "expect": "no_fire",
+      "why": "One below the threshold: shows exactly where the line is.",
+      "events": [
+        {"@timestamp": "2026-10-27T18:00:00Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T18:01:05Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}},
+        {"@timestamp": "2026-10-27T18:00:40Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T18:01:45Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}},
+        {"@timestamp": "2026-10-27T18:01:20Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T18:02:25Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}},
+        {"@timestamp": "2026-10-27T18:02:00Z", "event": {"dataset": "okta.system", "action": "system.push.send_factor_verify_push", "outcome": "success", "ingested": "2026-10-27T18:03:05Z"}, "user": {"name": "user-a@example.com"}, "source": {"ip": "203.0.113.77"}}
+      ]
+    }
+  ]
+}

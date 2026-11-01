@@ -1,0 +1,34 @@
+# Sigma source for the Elastic rule in okta_mfa_push_fatigue.json.
+#
+# This rule matches ONE event (an Okta Verify push sent). The threshold (5 or
+# more for one user in a run) is applied in the Elastic rule, because the
+# Sigma Lucene backend can't produce a Kibana threshold rule.
+#
+# The Elastic rule's query is this rule converted with:
+#   sigma convert -t lucene -p pipelines/okta-ecs.yml okta/okta_mfa_push_fatigue.yml
+# which gives:
+#   event.dataset:okta.system AND event.action:system.push.send_factor_verify_push
+title: Okta Verify Push Sent
+id: ac30686e-92dc-426d-927c-6715528074e3
+status: experimental
+description: >
+  Okta sent an Okta Verify push challenge to a user. One push is a normal
+  sign-in; the Elastic rule built from this counts them per user and alerts
+  on 5 or more in one run, which suggests MFA fatigue (someone with the
+  password flooding the user with pushes until one is approved).
+author: Lucas Gundry
+date: 2026-10-27
+tags:
+  - attack.credential-access
+  - attack.t1621
+logsource:
+  product: okta
+  service: okta
+detection:
+  selection:
+    eventtype: system.push.send_factor_verify_push
+  condition: selection
+falsepositives:
+  - A user whose phone is offline or slow, retrying the sign-in
+  - An app or script retrying a sign-in that triggers a push
+level: low

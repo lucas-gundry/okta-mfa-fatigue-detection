@@ -1,0 +1,55 @@
+{
+  "rule_id": "okta-mfa-push-fatigue",
+  "name": "Okta: many MFA push challenges for one user (MFA fatigue)",
+  "description": "Five or more Okta Verify push challenges sent to the same user within one rule run (about 5 minutes). This pattern suggests someone who has the password is flooding the user with pushes, hoping one gets approved. Built from the Sigma rule okta/okta_mfa_push_fatigue.yml; the threshold is applied here.",
+  "type": "threshold",
+  "language": "kuery",
+  "index": [
+    "logs-okta.system-*"
+  ],
+  "query": "event.dataset:okta.system and event.action:system.push.send_factor_verify_push",
+  "threshold": {
+    "field": [
+      "user.name"
+    ],
+    "value": 5
+  },
+  "interval": "5m",
+  "from": "now-6m",
+  "timestamp_override": "event.ingested",
+  "severity": "high",
+  "risk_score": 73,
+  "enabled": false,
+  "max_signals": 100,
+  "version": 1,
+  "author": [
+    "Lucas Gundry"
+  ],
+  "tags": [
+    "Okta",
+    "Identity",
+    "Credential Access"
+  ],
+  "false_positives": [
+    "A user whose phone is offline or slow, retrying several times. Check for denials (there usually are none) and ask the user.",
+    "An app or script retrying a sign-in that triggers a push. Check user_agent.original and whether the pushes are evenly spaced."
+  ],
+  "threat": [
+    {
+      "framework": "MITRE ATT&CK",
+      "tactic": {
+        "id": "TA0006",
+        "name": "Credential Access",
+        "reference": "https://attack.mitre.org/tactics/TA0006/"
+      },
+      "technique": [
+        {
+          "id": "T1621",
+          "name": "Multi-Factor Authentication Request Generation",
+          "reference": "https://attack.mitre.org/techniques/T1621/"
+        }
+      ]
+    }
+  ],
+  "note": "## What this rule counts\nOkta Verify push challenges sent (`system.push.send_factor_verify_push`), grouped by `user.name`. An attacker who already has the password sends push after push, hoping the user taps Approve to make it stop (MFA fatigue, or MFA bombing).\n\n## Triage\n- Who: `user.name`. Did they start these sign-ins? Ask them out of band (not by a channel the attacker might control).\n- From where: `source.ip`, `source.geo.*`, `source.as.organization.name`. Known for this user?\n- Denials: `user.authentication.auth_via_mfa` with `event.outcome: failure`, `okta.debug_context.debug_data.factor: OKTA_VERIFY_PUSH` and `okta.outcome.reason: INVALID_CREDENTIALS`, for the same user in the same minutes (checked on one live denial; Okta logged no `user.mfa.okta_verify.deny_push` event for a denial that wasn't reported as suspicious). Several denials make this much more likely to be an attack.\n- What came next: an approved push (`user.authentication.auth_via_mfa` success) or a new session after the pushes is the case that matters. If so, treat the password as known to the attacker: reset it and revoke sessions (both need human approval).\n\n## Timing\n- Ingest time (`event.ingested`), so late events still count in the next run.\n\n## Known limits\n- Event name checked against real homelab events. The 5-push threshold itself has not fired on real data.\n- Slow drip: one push every 10 minutes never reaches 5 in one lookback. A companion rule on denials, or a longer window, would catch it.\n- The threshold of 5 is a starting value, not tuned against real traffic.\n- Number matching (Okta Verify asking the user to pick a number) makes blind approval much harder; this rule still matters for orgs or policies without it.\n\n## Field mapping from Sigma\nThe query is the Sigma rule converted with `sigma convert -t lucene -p pipelines/okta-ecs.yml`; the threshold is added here.\n- `eventtype` -> `event.action`\n- logsource `okta` -> `event.dataset: okta.system`"
+}

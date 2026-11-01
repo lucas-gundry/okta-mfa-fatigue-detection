@@ -1,0 +1,41 @@
+# Runs the rule's test cases and the runner's self-tests.
+#
+# Security: read-only token, not kept on disk after checkout. Actions are
+# pinned to full commit SHAs (version noted). No secrets. Uses pull_request,
+# never pull_request_target.
+
+name: Rule tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  rule-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Install Sigma tools
+        run: python -m pip install -r requirements.txt
+
+      # Exit 1 (a case failed) or 2 (a broken rule or file) fails the job.
+      - name: Run rule cases
+        run: python -I scripts/run_rule_tests.py
+
+      # Runs even when the cases fail, so one failure can't hide another.
+      - name: Runner self-tests
+        if: always()
+        run: python -I -m unittest discover -s scripts

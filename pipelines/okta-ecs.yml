@@ -1,0 +1,45 @@
+# Sigma processing pipeline: Okta System Log field names -> the ECS fields
+# written by Elastic's Okta integration (logs-okta.system-*).
+#
+# Use: sigma convert -t lucene -p pipelines/okta-ecs.yml <rule.yml>
+# Tool versions: requirements.txt.
+#
+# Only mappings checked against real documents are listed. Outcome values:
+# FAILURE -> failure and SUCCESS -> success were confirmed 1:1 in the data
+# (2026-10-04). Okta's other results (CHALLENGE, ALLOW, ...) are not mapped
+# here; add them when a rule needs them.
+name: Okta System Log to ECS (Elastic Okta integration)
+priority: 30
+transformations:
+  - id: okta_outcome_values
+    type: map_string
+    mapping:
+      FAILURE: failure
+      SUCCESS: success
+    field_name_conditions:
+      - type: include_fields
+        fields:
+          - outcome.result
+    rule_conditions:
+      - type: logsource
+        product: okta
+        service: okta
+  - id: okta_field_names
+    type: field_name_mapping
+    mapping:
+      eventtype: event.action
+      outcome.result: event.outcome
+      outcome.reason: okta.outcome.reason
+      actor.alternateid: user.name
+    rule_conditions:
+      - type: logsource
+        product: okta
+        service: okta
+  - id: okta_dataset
+    type: add_condition
+    conditions:
+      event.dataset: okta.system
+    rule_conditions:
+      - type: logsource
+        product: okta
+        service: okta
